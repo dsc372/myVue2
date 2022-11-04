@@ -3,6 +3,8 @@ import Dep from "./dep"
 
 class Observe {
   constructor(data) {
+    //给每个对象（包括数组）也加一个dep，这样的话使用$set,$delete或数组的七个方法就可以被watcher监测到
+    this.dep=new Dep()
     //vue2中Obejec.defineProperty只能劫持已存在的属性（为此vue2里面写了一些API，如$set,$delete）
     Object.defineProperty(data, "__observe__", {
       value: this, //这里的this是指class Observe这个实例，赋值给data是因为重写七个数组方法时要用到walkArray,同时可以作为已劫持的标识
@@ -26,13 +28,27 @@ class Observe {
 
 export function defineReactive(target, key, value) {
   //形成了闭包，value不会被销毁
-  observe(value) //若value为对象(包括数组），则对对象中的所有属性进行劫持（数组会在劫持过程中被单独处理）
+  function dependArray(arr){//数组中有数组依然要绑定
+    for(let i=0;i<arr.length;i++){
+      arr[i].__observe__&&arr[i].__observe__.dep.depend()
+      if(Array.isArray(arr[i])){
+        dependArray(arr[i])
+      }
+    }
+  }
+  let childObj=observe(value) //若value为对象(包括数组），则对对象中的所有属性进行劫持（数组会在劫持过程中被单独处理）
   let dep =new Dep()
   Object.defineProperty(target, key, {
     get() {
-      console.log("get时要做的事")
+      console.log("get时要做的事",key)
       if(Dep.target){//只有在watcher中get这个属性时才会有Dep.target，才需和这个watcher产生联系
         dep.depend()//让这个属性的dep记住调用这个属性的组件的watcher,同时watcher观察这个dep
+        if(childObj){
+          childObj.dep.depend()
+          if(Array.isArray(value)){
+            dependArray(value)
+          }
+        }
       }
       return value
     },
@@ -40,7 +56,7 @@ export function defineReactive(target, key, value) {
       if (value === newValue) return
       observe(newValue) //若newValue为对象，则对对象中的所有属性进行劫持（数组会在劫持过程中被单独处理）
       value = newValue
-      console.log("set时要做的事")
+      console.log("set时要做的事",newValue)
       dep.notify()//通知所有观察该dep的watcher更新
     },
   })

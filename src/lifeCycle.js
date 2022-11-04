@@ -71,6 +71,5 @@ export function mountComponent(vm,el){
         vm._update(vm._render())
     }
     let w=new Watcher(vm,updateComponent,true)//true用于标识是一个渲染watcher
-    console.log(w)
     //3.最后挂载到el上
 }

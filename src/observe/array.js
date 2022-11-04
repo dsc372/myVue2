@@ -24,6 +24,7 @@ methods.forEach(method=>{
             this.__observe__.walkArray(inserted)//inserted是数组，此处对数组中的对象进行劫持
         }
         console.log(`${method}时要做的事`)
+        this.__observe__.dep.notify()
         return res
     }
 })

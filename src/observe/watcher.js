@@ -24,7 +24,47 @@ class Watcher{//不同组件有不同的watcher
         Dep.target=null//渲染完后清空
     }
     update(){
-        this.get()
+        //异步更新，同步更新会造成性能浪费
+        queueWatcher(this)
+    }
+}
+
+let que=[]
+let has={}//用于去重
+let pending=false//防抖
+function queueWatcher(watcher){
+    if(!has[watcher.id]){
+        que.push(watcher)
+        has[watcher.id]=true
+        if(!pending){//无论update多少次，最终只执行一次刷新
+            nextTick(flushSchedulerQueue)//让flushSchedulerQueue异步执行
+            pending=true
+        }
+    }
+}
+function flushSchedulerQueue(){
+    que.forEach(watcher=>{
+        watcher.get()
+    })
+    que=[]
+    has={}
+    pending=false
+}
+
+
+//把$nextTick函数和渲染函数处理成异步的
+let callbacks=[]
+let waiting=false
+function flushCallbacks(){
+    callbacks.forEach(cb=>cb())
+    callbacks=[]
+    waiting=false
+}
+export function nextTick(cb){
+    callbacks.push(cb)
+    if(!waiting){
+        Promise.resolve().then(flushCallbacks)//源码中不只用了Promise，用了优雅降级
+        waiting=true
     }
 }
 
