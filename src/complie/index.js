@@ -1,108 +1,67 @@
-const ncname=`[a-zA-Z_][\\-\\.0-9_a-zA-Z]*`
-const qnameCapture=`((?:${ncname}\\:)?${ncname})`
-const startTagOpen= new RegExp(`^<${qnameCapture}`)//匹配起始标签 <xxx
-const endTag=new RegExp(`^<\\/${qnameCapture}[^>]*>`)//匹配结束标签 </xxx>
-const attribute=/^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/  //匹配属性
-const startTagClose=/^\s*(\/?)>/ // >或/>
-const defaultTagRE=/\{\{((?:.|\r?\n)+?)\}\}/g //{{}}
-//vue3没有采用正则
+import { parseHTML } from "./parse.js"
 
-export function complieToFunction(template){
-    //1.将template转化为ast语法树
-    let ast=parseHTML(template)
+const defaultTagRE=/\{\{((?:.|\r?\n)+?)\}\}/g //{{}}
+
+export function complieToFunction(template) {
+  //1.将template转化为ast语法树
+  let ast = parseHTML(template)
+  //2.通过ast语法树，生成render方法，render方法执行后返回的结果就是虚拟DOM
+  let code=`with(this){return ${codeGen(ast)}}`//with的作用就是让{}中代码的变量都去()中的地方找
+  let render=new Function(code)
+  return render
 }
 
-function parseHTML(html){
-    //此行一下为构建语法树所需的数据结构
-    const ELEMENT_TYPE=1
-    const TEXT_TYPE=3
-    const stack=[]//用于存放元素
-    let currentParent//指向栈中的最后一个
-    let root;
+function codeGen(ast) {
+  //通过ast语法树生成之后要传入render函数的代码其中_c创建元素，_v创建文本，_s处理{{}}中的变量
+  let code = `_c('${ast.tag}',${
+    ast.attrs.length > 0 ? propsGen(ast.attrs) : null
+  }${ast.children.length > 0 ? `,${childrenGen(ast.children)}` : ""})`
+  return code
+}
 
-    //此行一下为解析html
-    function advance(n){
-        html=html.substring(n)
+function propsGen(attrs) {
+  let str = ""
+  for (let i = 0; i < attrs.length; i++) {
+    if (attrs[i].name === "style") {
+      let obj = {}
+      attrs[i].value.split(";").forEach((item) => {
+        let [key, value] = item.split(":")
+        obj[key] = value
+      })
+      attrs[i].value = obj
     }
-    function parseStartTag(){
-        const start =html.match(startTagOpen)
-        if(start){
-            const match={
-                tagName:start[1],
-                attrs:[],
+    str += `${attrs[i].name}:${JSON.stringify(attrs[i].value)},`
+  }
+  return `{${str.slice(0, -1)}}`
+}
+
+function childrenGen(children){
+    function gen (child){
+        if(child.type===1){
+            return codeGen(child)
+        }else{
+            let text=child.text
+            if(!defaultTagRE.test(text)){
+                return `_v${JSON.stringify(text)}`
+            }else{
+                let tokens=[]
+                let match
+                defaultTagRE.lastIndex=0//!defaultTagRE.test(text)之后lastIndex已偏移
+                let lastIndex=0
+                while(match=defaultTagRE.exec(text)){//{{name}}  hello  {{age}}  hello
+                    let index=match.index
+                    if(index>lastIndex){//处理两个{{}}之间的text
+                        tokens.push(JSON.stringify(text.slice(lastIndex,index).trim()))
+                    }
+                    tokens.push(`_s(${match[1].trim()})`)
+                    lastIndex=index+match[0].length
+                }
+                if(lastIndex<text.length){
+                    tokens.push(JSON.stringify(text.slice(lastIndex).trim()))
+                }
+                return `_v(${tokens.join('+')})`
             }
-            advance(start[0].length)
-            //一直解析，直到匹配到'>'符号
-            let attr,end
-            while(!(end=html.match(startTagClose))&&(attr=html.match(attribute))){
-                advance(attr[0].length)
-                match.attrs.push({name:attr[1],value:attr[3]||attr[4]||attr[5]||true})
-                //下标具体是3、4、5中的哪一个由html.match(attribute)的返回值决定,true是因为有些属性没值时默认为true
-            }
-            if(end){
-                advance(end[0].length)
-            }
-            return match
-        }
-        return false
-    }
-    while(html){
-        let textEnd=html.indexOf('<')
-        //textEnd为0说明是一个标签，大于零则指的是文本结束的位置
-        if(textEnd===0){
-            const startTagMatch=parseStartTag()
-            if(startTagMatch){//处理开始标签
-                start(startTagMatch.tagName,startTagMatch.attrs)
-                continue
-            }
-            const endTagMatch=html.match(endTag)
-            if(endTagMatch){//处理结束标签
-                end(endTagMatch[1])
-                advance(endTagMatch[0].length)
-                continue
-            }
-        }else if(textEnd>0){
-            let text=html.substring(0,textEnd);
-            if(text.trim()!==''){
-                chars(text)
-            }
-            if(text){
-                advance(text.length)
-            }
-            continue
         }
     }
-    
-    //此行以下为构建语法树  
-    function createASTElement(tag,attrs){
-        return{
-            tag,
-            type:ELEMENT_TYPE,
-            children:[],
-            attrs,
-            parent:null
-        }
-    }
-    function start(tagName,attrs){
-        let node=createASTElement(tagName,attrs)
-        if(!root)root=node
-        if(currentParent){
-            node.parent=currentParent
-            currentParent.children.push(node)
-        }
-        stack.push(node)
-        currentParent=node
-    }
-    function chars(text){//文本直接放到currentParent的children中
-        currentParent.children.push({
-            type:TEXT_TYPE,
-            text,
-            parent:currentParent
-        })
-    }
-    function end(tagName){
-        stack.pop()
-        currentParent=stack[stack.length-1]
-    }
-    console.log(root)
+    return children.map(child=>gen(child)).join(',')
 }

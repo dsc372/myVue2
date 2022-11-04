@@ -1,5 +1,6 @@
 import { initState } from "./initState"
 import {complieToFunction} from './complie/index.js'
+import { mountComponent } from "./lifeCycle.js"
 
 export function initMixin(MyVue2){
     MyVue2.prototype._init=function(options){
@@ -25,8 +26,8 @@ export function initMixin(MyVue2){
         }else{
             template=opts.template
         }
-        const render=complieToFunction(template)
-        opts.render=render//后两种情况最后也要有一个render
+        opts.render=complieToFunction(template)//后两种情况最后也要有一个render
        }
+       mountComponent(vm,el)//通过render生成虚拟DOM，由虚拟DOM生成真是DOM，最后挂载到el上
     }
 }
