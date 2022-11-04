@@ -1,4 +1,5 @@
 import { newArrayProto } from "./array"
+import Dep from "./dep"
 
 class Observe {
   constructor(data) {
@@ -26,9 +27,13 @@ class Observe {
 export function defineReactive(target, key, value) {
   //形成了闭包，value不会被销毁
   observe(value) //若value为对象(包括数组），则对对象中的所有属性进行劫持（数组会在劫持过程中被单独处理）
+  let dep =new Dep()
   Object.defineProperty(target, key, {
     get() {
       console.log("get时要做的事")
+      if(Dep.target){//只有在watcher中get这个属性时才会有Dep.target，才需和这个watcher产生联系
+        dep.depend()//让这个属性的dep记住调用这个属性的组件的watcher,同时watcher观察这个dep
+      }
       return value
     },
     set(newValue) {
@@ -36,6 +41,7 @@ export function defineReactive(target, key, value) {
       observe(newValue) //若newValue为对象，则对对象中的所有属性进行劫持（数组会在劫持过程中被单独处理）
       value = newValue
       console.log("set时要做的事")
+      dep.notify()//通知所有观察该dep的watcher更新
     },
   })
 }

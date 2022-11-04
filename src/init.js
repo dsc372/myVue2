@@ -28,6 +28,6 @@ export function initMixin(MyVue2){
         }
         opts.render=complieToFunction(template)//后两种情况最后也要有一个render
        }
-       mountComponent(vm,el)//通过render生成虚拟DOM，由虚拟DOM生成真是DOM，最后挂载到el上
+       mountComponent(vm,el)//new一个Watcher，new的过程中会完成初次渲染
     }
 }
