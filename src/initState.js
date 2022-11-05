@@ -10,9 +10,23 @@ export function initState(vm){
     if(opts.computed){
         initComputed(vm)
     }
+    if(opts.watch){
+        initWatch(vm)
+    }
 }
 
 function initData(vm){
+    function myProxy(vm,target,key){
+        Object.defineProperty(vm,key,{
+            get(){
+                return vm[target][key]
+            },
+            set(newValue){
+                if(newValue===vm[target][key])return
+                else vm[target][key]=newValue
+            }
+        })
+    }
     let data=vm.$options.data
     data=typeof data ==='function'?data.call(vm):data
     vm._data=data
@@ -23,6 +37,26 @@ function initData(vm){
 }
 
 function initComputed(vm){//new Watcher()是为了缓存
+    function defineComputed(target,key,userDef){
+        const setter=userDef.set||(()=>{})
+        Object.defineProperty(target,key,{
+            get:createComputedGetter(key),
+            set:setter
+        })
+    }
+    
+    function createComputedGetter(key){
+        return function(){
+            const watcher=this._computedWatchers[key]
+            if(watcher.dirty){
+                watcher.evaluate()
+            }
+            if(Dep.target){//要让computed中使用到的属性的dep也能被渲染watcher观察
+                watcher.depend()
+            }
+            return watcher.value
+        }
+    }
     const computed=vm.$options.computed
     const watchers=vm._computedWatchers={}
     for(let key in computed){
@@ -33,35 +67,22 @@ function initComputed(vm){//new Watcher()是为了缓存
     }
 }
 
-function defineComputed(target,key,userDef){
-    const setter=userDef.set||(()=>{})
-    Object.defineProperty(target,key,{
-        get:createComputedGetter(key),
-        set:setter
-    })
-}
-
-function createComputedGetter(key){
-    return function(){
-        const watcher=this._computedWatchers[key]
-        if(watcher.dirty){
-            watcher.evaluate()
+function initWatch(vm){
+    function createWatcher(vm,key,handler){//handler可能是字符串或函数
+        if(typeof handler==='string'){
+            handler=vm[handler]
         }
-        if(Dep.target){//要让computed中使用到的属性的dep也能被渲染watcher观察
-            watcher.depend()
-        }
-        return watcher.value
+        return vm.$watch(key,handler)
     }
-}
-
-function myProxy(vm,target,key){
-    Object.defineProperty(vm,key,{
-        get(){
-            return vm[target][key]
-        },
-        set(newValue){
-            if(newValue===vm[target][key])return
-            else vm[target][key]=newValue
+    let watch=vm.$options.watch
+    for(let key in watch){
+        const handler=watch[key]//可能是字符串(调用methods中的方法)、数组、函数
+        if(Array.isArray(handler)){
+            for(let i=0;i<handler.length;i++){
+                createWatcher(vm,key,handler[i])
+            }
+        }else{
+            createWatcher(vm,key,handler)
         }
-    })
+    }
 }

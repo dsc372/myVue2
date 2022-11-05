@@ -4,17 +4,25 @@ let id = 0
 
 class Watcher {
   //不同组件有不同的watcher
-  constructor(vm, callback, option) {
+  constructor(vm, expOrFn, option,cb) {//exOrFn为回触发属性get()的字符串货或函数，cb为watch的watcher的回调
     //vm为watcher所观察的实例，callback为回调函数
     this.id = id++
     this.vm = vm
     this.renderWatcher = option //这是否是一个渲染watcher
     this.deps = [] //存放被当前watcher观察的dep，计算属性和卸载组件时要用
     this.depsId = new Set()
-    this.getter = callback //getter意味着调用这个函数会发生取值操作
+    if(typeof expOrFn==='string'){
+      this.getter=function(){
+        return vm[expOrFn]
+      }
+    }else{
+      this.getter = expOrFn //getter意味着调用这个函数会发生取值操作
+    }
+    this.cb=cb
     this.lazy = option.lazy
     this.dirty = this.lazy
-    this.lazy ? undefined : this.get()
+    this.user=option.user
+    this.value=this.lazy ? undefined : this.get()//用于存放watch的oldValue
   }
   addDep(dep) {
     if (!this.depsId.has(dep.id)) {
@@ -47,6 +55,13 @@ class Watcher {
       queueWatcher(this)
     }
   }
+  run(){//update后要做的事
+    let oldValue=this.value
+    let newValue=this.get()
+    if(this.user){
+      this.cb.call(vm,oldValue,newValue)
+    }
+  }
 }
 
 let que = []
@@ -65,7 +80,7 @@ function queueWatcher(watcher) {
 }
 function flushSchedulerQueue() {
   que.forEach((watcher) => {
-    watcher.get()
+    watcher.run()
   })
   que = []
   has = {}
