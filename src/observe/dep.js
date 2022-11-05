@@ -18,4 +18,16 @@ class Dep{//被观察者，每一个响应式数据都有一个dep
 
 Dep.target=null
 
+let stack=[]
+
+export function pushTarget(watcher){
+    stack.push(watcher)
+    Dep.target=watcher
+}
+
+export function popTarget(){
+    stack.pop();
+    Dep.target=stack[stack.length-1]
+}
+
 export default Dep

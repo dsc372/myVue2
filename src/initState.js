@@ -1,9 +1,14 @@
+import Dep from "./observe/dep.js"
 import { observe } from "./observe/index.js"
+import Watcher from "./observe/watcher.js"
 
 export function initState(vm){
     const opts=vm.$options
     if(opts.data){
         initData(vm)
+    }
+    if(opts.computed){
+        initComputed(vm)
     }
 }
 
@@ -14,6 +19,38 @@ function initData(vm){
     observe(data)
     for(let key in data){
         myProxy(vm,'_data',key)
+    }
+}
+
+function initComputed(vm){//new Watcher()是为了缓存
+    const computed=vm.$options.computed
+    const watchers=vm._computedWatchers={}
+    for(let key in computed){
+        let userDef=computed[key]
+        let callback=typeof userDef==='function'?userDef:userDef.get
+        watchers[key]=new Watcher(vm,callback,{lazy:true})
+        defineComputed(vm,key,userDef)
+    }
+}
+
+function defineComputed(target,key,userDef){
+    const setter=userDef.set||(()=>{})
+    Object.defineProperty(target,key,{
+        get:createComputedGetter(key),
+        set:setter
+    })
+}
+
+function createComputedGetter(key){
+    return function(){
+        const watcher=this._computedWatchers[key]
+        if(watcher.dirty){
+            watcher.evaluate()
+        }
+        if(Dep.target){//要让computed中使用到的属性的dep也能被渲染watcher观察
+            watcher.depend()
+        }
+        return watcher.value
     }
 }
 

@@ -66,10 +66,10 @@ export function initLifeCycle(MyVue2){
 export function mountComponent(vm,el){
     //1.通过render生成虚拟DOM  vm._render()
     //2.由虚拟DOM生成真是DOM  vm._update()
+    //3.最后挂载到el上
     vm.$el=el
     const updateComponent=()=>{
         vm._update(vm._render())
     }
     let w=new Watcher(vm,updateComponent,true)//true用于标识是一个渲染watcher
-    //3.最后挂载到el上
 }
