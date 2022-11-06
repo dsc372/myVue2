@@ -25,3 +25,7 @@ function vnode(vm, tag, key, props, children, text) {
     text,
   }
 }
+
+export function isSameVnode(vNode1,vNode2){
+  return vNode1.tag===vNode2.tag&&vNode1.key===vNode2.key
+}

@@ -1,50 +1,19 @@
 import Watcher from "./observe/watcher.js";
 import { createElementVNode, createTextVNode } from "./vdom/index.js"
-
-function createEle(vnode){
-    function patchProps(el,props){
-        for(let key in props){
-            if(key==='style'){
-                for(let styleName in props.style){
-                    el.style[styleName]=props.style[styleName]
-                }
-            }else{
-                el.setAttribute(key,props[key])
-            }
-        }
-    }
-    //通过虚拟DOM创建真实DOM
-    let {tag,props,children,text}=vnode
-    if(typeof tag ==='string'){//元素节点
-        vnode.el=document.createElement(tag);//将真实节点与虚拟节点对应起来，后续如果修改属性方便操作
-        patchProps(vnode.el,props)
-        children.forEach(child=>{
-            vnode.el.appendChild(createEle(child))
-        })
-    }else{//此时tag===undefined，为文本节点
-        vnode.el=document.createTextNode(text)
-    }
-    return vnode.el
-}
-
-function patch(oldNode,vnode){//既有初始化的功能，又有更新的逻辑
-    const isRealElement=oldNode.nodeType//nodeType属性是元素固有的
-    if(isRealElement){
-        const parentElm=oldNode.parentNode//parentNode属性是元素固有的
-        let newElm=createEle(vnode)
-        parentElm.insertBefore(newElm,oldNode.nextSibling)//插入新的真实DOM
-        parentElm.removeChild(oldNode)//删除老的真实DOM
-        return newElm
-    }else{
-        //oldVNode也是虚拟节点，使用diff算法
-    }
-}
+import {patch} from "./vdom/patch.js"
 
 export function initLifeCycle(MyVue2){
     MyVue2.prototype._update=function(vnode){
         const vm=this
         const el=vm.$el
-        vm.$el=patch(el,vnode)
+        const preVnode=vm._vnode
+        vm._vnode=vnode
+        if(preVnode){
+            vm.$el=patch(preVnode,vnode)
+        }else{
+            vm.$el=patch(el,vnode)
+        }
+        
     }
     MyVue2.prototype._render=function(){
         const vm=this

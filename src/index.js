@@ -1,19 +1,18 @@
+import { initGloablAPI } from "./gloablAPI"
 import { initMixin } from "./init"
+import { initMixinState } from "./initState"
 import { initLifeCycle } from "./lifeCycle"
-import Watcher, { nextTick } from "./observe/watcher"
 
 function MyVue2(options){
     this._init(options)
 }
 
-MyVue2.prototype.$nextTick=nextTick
+initMixin(MyVue2)//扩展了init方法
 
-MyVue2.prototype.$watch=function(expOrFn,cb){
-    new Watcher(this,expOrFn,{user:true},cb)
-}
+initLifeCycle(MyVue2)//vm._update  vm._render
 
-initMixin(MyVue2)
+initMixinState(MyVue2)//实现了$nextTick、$watch
 
-initLifeCycle(MyVue2)
+initGloablAPI(MyVue2)
 
 export default MyVue2

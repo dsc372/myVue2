@@ -42,7 +42,7 @@ function childrenGen(children){
         }else{
             let text=child.text
             if(!defaultTagRE.test(text)){
-                return `_v${JSON.stringify(text)}`
+                return `_v(${JSON.stringify(text)})`
             }else{
                 let tokens=[]
                 let match
