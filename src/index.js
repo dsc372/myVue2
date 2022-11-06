@@ -3,7 +3,7 @@ import { initMixin } from "./init"
 import { initMixinState } from "./initState"
 import { initLifeCycle } from "./lifeCycle"
 
-function MyVue2(options){
+function MyVue2(options={}){
     this._init(options)
 }
 

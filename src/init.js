@@ -1,12 +1,15 @@
 import { initState } from "./initState"
 import {complieToFunction} from './complie/index.js'
-import { mountComponent } from "./lifeCycle.js"
+import { callHook, mountComponent } from "./lifeCycle.js"
+import { mergeOptions } from "./utils/mergeOptions"
 
 export function initMixin(MyVue2){
     MyVue2.prototype._init=function(options){
         const vm=this
-        vm.$options=options
+        vm.$options=mergeOptions(this.constructor.options,options)
+        callHook(vm,'beforeCreate')
         initState(vm)
+        callHook(vm,'created')
         if(options.el){
             vm.$mount(options.el)
         }
