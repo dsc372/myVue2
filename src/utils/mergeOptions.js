@@ -1,5 +1,7 @@
 const strategies={}
 const LIFECYCLE=['beforeCreate','created']
+
+//生命周期函数的策略
 LIFECYCLE.forEach(hook=>{
     strategies[hook]=function(parent,child){
         if(child){
@@ -13,6 +15,18 @@ LIFECYCLE.forEach(hook=>{
         }
     }
 })
+
+//compontens的策略(child优先)
+strategies.components=function(parent,child){
+    const res=Object.create(parent)
+    if(child){
+        for(let key in child){
+            res[key]=child[key]
+        }
+    }
+    return res
+}
+
 
 export function mergeOptions(parent,child){
     function mergeField(key){
